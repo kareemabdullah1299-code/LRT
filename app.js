@@ -1,3 +1,4 @@
+window.__lrt=1;
 const TABS=[["dash","لوحة المتابعة"],["veh","العربيات"],["drv","السواقين"],["fine","المخالفات"],["km","العدادات اليومية"],["rep","تقرير العدادات"],["trp","التنقلات والبدلات"],["cus","العهدة"],["imp","رفع Excel"],["find","بحث"]];
 const PUB=[["dash","الملخص"],["rep","تقرير العدادات"],["ren","التجديدات والصيانة"],["frep","تقرير المخالفات"],["trp","تقرير التنقلات"]];
 const S={vehicles:[],drivers:[],fines:[],logs:[],trips:[],cus:[],alloc:[],exp:[],ret:[]},C={vehicles:"vehicles",drivers:"drivers",fines:"fines",logs:"kmlogs",trips:"trips",cus:"custody",alloc:"allocs",exp:"expenses",ret:"returns"};
@@ -30,7 +31,7 @@ function dropRow(id){Object.keys(S).forEach(k=>{S[k]=S[k].filter(x=>x.id!==id)})
 let ADM=false;
 const G={trp:{from:"",to:""},frep:{from:"",to:""}},ago=n=>new Date(Date.now()-n*864e5).toISOString().slice(0,10);
 
-function hdr(){if(!$("#hb"))$("header").insertAdjacentHTML("beforeend",'<span class="hact"><button class="btn g s" id="dg" hidden>فحص الاتصال</button><button class="btn s" id="hb"></button></span>');$("#dg").hidden=!ADM;$("#dg").onclick=diag;$("#mode").textContent=ADM?"وضع الإدارة":"تقارير";const b=$("#hb");b.textContent=ADM?"خروج":"دخول الإدارة";b.onclick=ADM?logout:()=>loginView()}
+function hdr(){if(!$("#hb"))$("header").insertAdjacentHTML("beforeend",'<span class="hact"><button class="btn g s" id="dg" hidden>فحص الاتصال</button><button class="btn s" id="hb"></button></span>');$("#dg").hidden=!ADM;$("#dg").onclick=diag;const md=$("#mode");if(md)md.textContent=ADM?"وضع الإدارة":"تقارير";const b=$("#hb");b.textContent=ADM?"خروج":"دخول الإدارة";b.onclick=ADM?logout:()=>loginView()}
 const logout=async()=>{await sb.removeAllChannels();await sb.auth.signOut();loadPublic()};
 function loginView(msg){
  $("#app").innerHTML=`<div class="login card"><div class="lg">🔐</div><h2>دخول الإدارة</h2><p class="mut">لمدير التشغيل فقط. التقارير متاحة من غير دخول.</p><div class="f" style="grid-template-columns:1fr"><div><label>الإيميل</label><input id="em" type="email" autocomplete="username"></div><div><label>كلمة السر</label><input id="pw" type="password" autocomplete="current-password"></div></div><p class="bad-t">${msg||""}</p><div class="row" style="justify-content:center"><button class="btn" id="li">دخول</button><button class="btn g" id="bk">رجوع للتقارير</button></div></div>`;
@@ -50,10 +51,12 @@ async function boot(){
  sb.channel("rec").on("postgres_changes",{event:"*",schema:"public",table:"records"},p=>{if(p.eventType==="DELETE")dropRow(p.old.id);else applyRow(p.new);render()}).subscribe()}
 const tmo=(p,ms=15000)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error("الاتصال بـ Supabase بطيء أو مقطوع. اتأكد من الإنترنت ومن رابط المشروع وإنه شغّال")),ms))]);
 if(window.addEventListener){window.addEventListener("error",e=>{const a=$("#app");if(a&&/جاري/.test(a.textContent))a.innerHTML='<div class="card">حصل خطأ في الصفحة: '+esc(e.message)+'</div>'});window.addEventListener("unhandledrejection",e=>{const a=$("#app");if(a&&/جاري/.test(a.textContent))a.innerHTML='<div class="card">حصل خطأ: '+esc((e.reason&&e.reason.message)||e.reason)+'</div>'})}
+const waitLib=async()=>{for(let i=0;i<150&&!window.supabase;i++)await new Promise(r=>setTimeout(r,100));return !!window.supabase};
+const needX=()=>window.XLSX?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=res;s.onerror=()=>rej(new Error("مكتبة Excel ما اتحمّلتش، اتأكد من الإنترنت"));document.head.appendChild(s)});
 async function start(){
  renderNav();
  try{
-  if(!window.supabase)return $("#app").innerHTML='<div class="card">مكتبة Supabase ما اتحمّلتش (الإنترنت أو حاجب لموقع cdn.jsdelivr.net). حدّث الصفحة وجرّب تاني.</div>';
+  if(!await waitLib())return $("#app").innerHTML='<div class="card">مكتبة Supabase ما اتحمّلتش (الإنترنت أو حاجب لموقع cdn.jsdelivr.net). حدّث الصفحة وجرّب تاني.</div>';
   if(SB_URL.startsWith("YOUR-")||SB_KEY.startsWith("YOUR-"))return $("#app").innerHTML='<div class="card">حط SB_URL و SB_KEY في أول ملف app.js (الخطوات في ملف supabase.sql).</div>';
   sb=supabase.createClient(SB_URL.trim(),SB_KEY.trim());
   const{data:{session}}=await tmo(sb.auth.getSession());
@@ -160,7 +163,7 @@ function find(){const t=q.trim().toLowerCase();let out="";
 
 const V={dash,veh,drv,fine,km,rep,trp,cus,imp,find,ren,frep};
 function render(){const a=$("#app"),f=document.activeElement;if(f&&f.id==="q")return;a.innerHTML=V[tab]();bind()}
-function renderNav(){const L=ADM?TABS:PUB;$("#ttl").textContent=(L.find(x=>x[0]===tab)||[])[1]||"";$("#nav").innerHTML=L.map(([k,l])=>`<button class="${k===tab?"on":""}" data-t="${k}">${l}</button>`).join("");
+function renderNav(){const L=ADM?TABS:PUB;const tt=$("#ttl");if(tt)tt.textContent=(L.find(x=>x[0]===tab)||[])[1]||"";$("#nav").innerHTML=L.map(([k,l])=>`<button class="${k===tab?"on":""}" data-t="${k}">${l}</button>`).join("");
  $("#nav").onclick=e=>{const t=e.target.dataset.t;if(t){tab=t;renderNav();$("#app").innerHTML=V[tab]();bind()}}}
 const EDIT={vehicles:[vForm,"vehicles"],drivers:[dForm,"drivers"],fines:[fForm,"fines"],trips:[tForm,"trips"]};
 function bind(){const a=$("#app");document.querySelectorAll("[data-rg]").forEach(e=>e.onchange=()=>{const[n,f]=e.dataset.rg.split(".");G[n][f]=e.value;render()});const xf=$("#xf");if(xf)xf.onchange=e=>xlRead(e.target.files[0]);document.querySelectorAll("[data-rp]").forEach(e=>e.onchange=()=>{rp[e.dataset.rp]=e.value;render()});
@@ -258,7 +261,7 @@ const DT=new Set(["date","insStart","taxStart","licExp"]),STR=new Set(["plate","
 const xd=v=>{if(v instanceof Date){const w=new Date(v.getTime()+108e5),p=n=>String(n).padStart(2,"0");return w.getFullYear()+"-"+p(w.getMonth()+1)+"-"+p(w.getDate())}if(typeof v==="number"&&v>20000)return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10);return String(v).trim().slice(0,10)};
 let XL=null;
 function mapRow(sp,r){const o={};for(const[h,k]of Object.entries(sp.f)){let v=r[h];if(v===""||v==null)continue;v=DT.has(k)?xd(v):v instanceof Date?xd(v):STR.has(k)?String(v).trim():v;o[k]=v}return o}
-async function xlRead(f){if(!f)return;try{const wb=XLSX.read(await f.arrayBuffer(),{type:"array",cellDates:true});XL={};
+async function xlRead(f){if(!f)return;try{await needX();const wb=XLSX.read(await f.arrayBuffer(),{type:"array",cellDates:true});XL={};
  for(const[n,sp]of Object.entries(SH)){const ws=wb.Sheets[n];if(!ws)continue;XL[n]=XLSX.utils.sheet_to_json(ws,{defval:""}).filter(r=>Object.values(r).some(v=>String(v).trim()!=="")).map(r=>mapRow(sp,r))}}catch(e){XL=null;alert("الملف مش مقروء: "+e.message)}render()}
 function xlNS(){return[new Set([...S.drivers.map(d=>d.name),...(XL["السواقين"]||[]).map(r=>r.name)]),new Set([...S.vehicles.map(v=>v.plate),...(XL["العربيات"]||[]).map(r=>r.plate)])]}
 function xlChk(n,r,N,P){
@@ -272,7 +275,7 @@ function xlSummary(){const[N,P]=xlNS(),w=[];Object.entries(XL).forEach(([n,rows]
  if(!Object.keys(XL).length)return'<div class="card">الملف مفيهوش أي ورقة بالأسماء المطلوبة. استخدم القالب.</div>';
  return`<div class="card"><h2>مراجعة قبل الاستيراد</h2>${T(["الورقة","عدد الصفوف"],Object.entries(XL).map(([n,r])=>`<tr><td>${esc(n)}</td><td>${r.length}</td></tr>`).join(""))}${w.length?`<h3>تنبيهات (الصفوف دي هتتخطى)</h3>${w.slice(0,30).map(x=>`<div class="al">${esc(x)}</div>`).join("")}${w.length>30?`<p class="mut">و ${w.length-30} تنبيه تاني…</p>`:""}`:""}<div class="row" style="margin-top:12px"><button class="btn" data-xc="1">تأكيد الاستيراد</button></div></div>`}
 function imp(){return`<div class="card"><h2>رفع البيانات من Excel</h2><ol class="mut"><li>نزّل القالب واملا الأوراق اللي محتاجها (ورقة لكل نوع بيانات).</li><li>ارفع الملف وراجع الملخص والتنبيهات.</li><li>اضغط «تأكيد الاستيراد». السواقين والعربيات الموجودين بيتحدّثوا، والباقي بيتضاف، والمكرر بيتخطّى.</li></ol><div class="row"><button class="btn" data-xt="1">تحميل قالب Excel</button><input type="file" id="xf" accept=".xlsx,.xls" style="max-width:320px"></div></div>${XL?xlSummary():""}`}
-function xlTemplate(){const wb=XLSX.utils.book_new();
+async function xlTemplate(){try{await needX()}catch(e){return alert(e.message)}const wb=XLSX.utils.book_new();
  wb.Workbook={Views:[{RTL:true}]};
  for(const[n,sp]of Object.entries(SH))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([Object.keys(sp.f)]),n);
  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["تعليمات"],["املا الأوراق اللي محتاجها وسيب الباقي فاضي، ومتغيرش أسماء الأوراق ولا عناوين الأعمدة."],["التواريخ بصيغة 2026-11-03 أو تاريخ Excel عادي."],["اسم السواق ورقم العربية لازم يتكتبوا بنفس الشكل الموجود في ورقتي السواقين والعربيات."],["ورقة العهدة: النوع = استلام أو توزيع أو مصروف أو تصفية. (السواق مطلوب في التوزيع والتصفية، ولو المصروف من عهدة المدير سيب السواق فاضي)."],["ورقة العدادات: ممكن صف للصباح وصف للمساء لنفس العربية والتاريخ، أو الاتنين في صف واحد."],["ورقة التنقلات: حالة البدل = تم الصرف أو لم يصرف."]]),"تعليمات");
