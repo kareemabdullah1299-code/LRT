@@ -29,7 +29,7 @@ function applyRow(r){const k=K[r.coll];if(!k)return;const i=S[k].findIndex(x=>x.
 function dropRow(id){Object.keys(S).forEach(k=>{S[k]=S[k].filter(x=>x.id!==id)})}
 let ADM=false;
 const G={trp:{from:"",to:""},frep:{from:"",to:""}},ago=n=>new Date(Date.now()-n*864e5).toISOString().slice(0,10);
-G.trp.from=ago(7);G.trp.to=today();G.frep.from=ago(30);G.frep.to=today();
+
 function hdr(){if(!$("#hb"))$("header").insertAdjacentHTML("beforeend",'<span class="hact"><button class="btn g s" id="dg" hidden>فحص الاتصال</button><button class="btn s" id="hb"></button></span>');$("#dg").hidden=!ADM;$("#dg").onclick=diag;$("#mode").textContent=ADM?"وضع الإدارة":"تقارير";const b=$("#hb");b.textContent=ADM?"خروج":"دخول الإدارة";b.onclick=ADM?logout:()=>loginView()}
 const logout=async()=>{await sb.removeAllChannels();await sb.auth.signOut();loadPublic()};
 function loginView(msg){
@@ -171,7 +171,7 @@ function bind(){const a=$("#app");document.querySelectorAll("[data-rg]").forEach
   if(d.d){const[k,id]=d.d.split(":");del(k,id)}
   if(d.r){const[w,id]=d.r.split(":");renew(id,w)}
   if(d.s)svcDone(d.s);
-  if(d.p)printFine(d.p);if(d.st)settle(d.st);if(d.xt)xlTemplate();if(d.xc)xlCommit();if(d.wk!==undefined)weekSet(Number(d.wk));if(d.rpp!==undefined)rpPrint();if(d.rpc!==undefined)rpCsv();if(d.inv)showInv(d.inv)}}
+  if(d.p)printFine(d.p);if(d.st)settle(d.st);if(d.xt)xlTemplate();if(d.xc)xlCommit();if(d.wk!==undefined)weekSet(Number(d.wk));if(d.rgall){const g=d.rgall==="rep"?rp:G[d.rgall];g.from=g.to="";render()}if(d.rpp!==undefined)rpPrint();if(d.rpc!==undefined)rpCsv();if(d.inv)showInv(d.inv)}}
 
 /* ---------- العهدة ---------- */
 const sum=(a,f)=>a.reduce((t,x)=>t+Number(f(x)||0),0),money=n=>Number(n||0).toLocaleString("en-US");
@@ -203,7 +203,7 @@ function cus(){const X=(k,id)=>canW?`<button class="btn g s" data-d="${k}:${id}"
 
 
 /* ---------- تقرير العدادات ---------- */
-let rp={from:today().slice(0,8)+"01",to:today(),vid:""};
+let rp={from:"",to:"",vid:""};
 const rpOk=x=>x.start!==undefined&&x.end!==undefined&&Number(x.end)>=Number(x.start);
 function rpData(){
  const l=S.logs.filter(x=>(!rp.from||x.date>=rp.from)&&(!rp.to||x.date<=rp.to)&&(!rp.vid||x.vehicleId===rp.vid));
@@ -217,7 +217,7 @@ function rep(){
  const dr=v=>esc(dName(v.driverId));
  return`<div class="card"><h2>تقرير العدادات</h2><div class="f"><div><label>من</label><input type="date" data-rp="from" value="${esc(rp.from)}"></div><div><label>إلى</label><input type="date" data-rp="to" value="${esc(rp.to)}"></div><div><label>العربية</label><select data-rp="vid"><option value="">كل العربيات</option>${S.vehicles.map(v=>`<option value="${v.id}" ${v.id===rp.vid?"selected":""}>${esc(v.plate)}</option>`).join("")}</select></div></div>
  <div class="row" style="margin-top:10px"><button class="btn g" data-rpp="1">طباعة / حفظ PDF</button><button class="btn g" data-rpc="1">تصدير CSV</button></div></div>
- <div id="rpt"><div class="grid card"><div class="stat"><b>${money(tot)}</b><small>إجمالي الكيلومترات</small></div><div class="stat"><b>${full.length}</b><small>أيام مكتملة</small></div><div class="stat"><b>${Math.round(fa)}</b><small>متوسط كم / يوم</small></div><div class="stat"><b>${top?esc(top.v.plate):"—"}</b><small>أكتر عربية سير</small></div><div class="stat"><b>${inc}</b><small>أيام ناقصة (صباح أو مساء)</small></div></div>
+ ${rp.vid?"":rngH(S.logs.length,l.length,"rep")}<div id="rpt"><div class="grid card"><div class="stat"><b>${money(tot)}</b><small>إجمالي الكيلومترات</small></div><div class="stat"><b>${full.length}</b><small>أيام مكتملة</small></div><div class="stat"><b>${Math.round(fa)}</b><small>متوسط كم / يوم</small></div><div class="stat"><b>${top?esc(top.v.plate):"—"}</b><small>أكتر عربية سير</small></div><div class="stat"><b>${inc}</b><small>أيام ناقصة (صباح أو مساء)</small></div></div>
  <div class="card"><h2>ملخص كل عربية</h2>${T(["العربية","السواق","أيام مكتملة","إجمالي كم","متوسط/يوم","أعلى يوم","أيام ناقصة","العداد الحالي","كم من آخر صيانة","الحالة"],per.map(p=>{const s=sinceSvc(p.v),hi=fa>0&&p.days>0&&p.avg>fa*1.5;return`<tr><td><b>${esc(p.v.plate)}</b></td><td>${dr(p.v)}</td><td>${p.days}</td><td>${money(p.tot)}<div style="background:var(--red);height:5px;border-radius:3px;width:${Math.round(p.tot/mx*100)}%"></div></td><td>${Math.round(p.avg)}</td><td>${p.max}</td><td>${p.inc?`<span class="tag warn">${p.inc}</span>`:0}</td><td>${odo(p.v.id)??"—"}</td><td>${s??"—"}</td><td>${p.days?(hi?'<span class="tag bad">استهلاك عالي</span>':'<span class="tag ok">عادي</span>'):'<span class="tag na">لا بيانات</span>'}</td></tr>`}).join(""))}<p class="mut">"استهلاك عالي" = متوسط العربية أكتر من ١٫٥ ضعف متوسط الأسطول في الفترة دي. الأيام الناقصة مش بتتحسب في الأرقام.</p></div>
  <div class="card"><h2>التفاصيل اليومية</h2>${T(["التاريخ","العربية","السواق","الصباح","المساء","المقطوع"],srt(l).map(x=>{const v=vById(x.vehicleId);return`<tr><td>${esc(x.date)}</td><td>${esc(vName(x.vehicleId))}</td><td>${v?dr(v):"—"}</td><td>${x.start??"—"}</td><td>${x.end??"—"}</td><td>${rpOk(x)?`<b>${x.end-x.start}</b>`:`<span class="tag warn">ناقص ${x.end===undefined?"المساء":x.start===undefined?"الصباح":"(قراءة غلط)"}</span>`}</td></tr>`}).join(""))}</div></div>`}
 function rpPrint(){$("#pf").innerHTML="<h3>LRT — "+esc(rpTitle())+"</h3>"+$("#rpt").innerHTML;window.print()}
@@ -228,14 +228,15 @@ function rpCsv(){
 
 
 /* ---------- تنقلات + تقارير + Excel ---------- */
-const rng=(n,g)=>`<div class="card"><div class="f"><div><label>من</label><input type="date" data-rg="${n}.from" value="${esc(g.from)}"></div><div><label>إلى</label><input type="date" data-rg="${n}.to" value="${esc(g.to)}"></div></div></div>`;
+const rngH=(all,shown,n)=>all>shown?`<div class="al">فيه ${all-shown} سجل تاني متسجل بس خارج الفترة المحددة <button class="btn g s" data-rgall="${n}">اعرض كل الفترات</button></div>`:"";
+const rng=(n,g,all,shown)=>rngH(all,shown,n)+`<div class="card"><div class="f"><div><label>من</label><input type="date" data-rg="${n}.from" value="${esc(g.from)}"></div><div><label>إلى</label><input type="date" data-rg="${n}.to" value="${esc(g.to)}"></div></div></div>`;
 const inR=(g,x)=>(!g.from||x.date>=g.from)&&(!g.to||x.date<=g.to);
 function tForm(t){form(t?"تعديل تنقل":"تسجيل تنقل",[["date","التاريخ","date"],["driverId","السواق","select",dOpts()],["vehicleId","العربية","select",vOpts()],["dest","الوجهة / خط التنقل"],["days","عدد الأيام","number"],["amount","قيمة البدل (جنيه)","number"],["paid","حالة البدل","select",[["paid","تم الصرف"],["pending","لم يُصرف بعد"]]],["notes","ملاحظات","area"]],t||{date:today(),days:1,paid:"pending"},async d=>{if(!d.driverId)return alert("اختار السواق");await save("trips",t&&t.id,d)})}
 function weekSet(n){const x=new Date(),df=(x.getDay()+1)%7,s=new Date(x.getTime()-(df+7*n)*864e5),e=new Date(s.getTime()+6*864e5),f=d=>d.toISOString().slice(0,10);G.trp.from=f(s);G.trp.to=f(e);render()}
 function trp(){
  const g=G.trp,l=S.trips.filter(t=>inR(g,t)),by=S.drivers.map(d=>[d,l.filter(t=>t.driverId===d.id)]).filter(x=>x[1].length).sort((a,b)=>b[1].length-a[1].length);
  const tot=sum(l,t=>t.amount),pend=sum(l.filter(t=>t.paid!=="paid"),t=>t.amount);
- return`<div class="row">${ADM?'<button class="btn" data-add="trip">+ تسجيل تنقل</button>':""}<button class="btn g" data-wk="0">الأسبوع ده</button><button class="btn g" data-wk="1">الأسبوع اللي فات</button></div>`+rng("trp",g)+
+ return`<div class="row">${ADM?'<button class="btn" data-add="trip">+ تسجيل تنقل</button>':""}<button class="btn g" data-wk="0">الأسبوع ده</button><button class="btn g" data-wk="1">الأسبوع اللي فات</button></div>`+rng("trp",g,S.trips.length,l.length)+
  `<div class="grid card"><div class="stat"><b>${l.length}</b><small>عدد التنقلات</small></div><div class="stat"><b>${by.length}</b><small>سواقين اتنقلوا</small></div>${ADM?`<div class="stat"><b>${money(tot)}</b><small>إجمالي البدلات</small></div><div class="stat"><b>${money(pend)}</b><small>لسه ما اتصرفش</small></div>`:""}</div>
  <div class="card"><h2>ملخص السواقين</h2>${T(["السواق","عدد التنقلات","الأيام"].concat(ADM?["إجمالي البدل","المصروف","المتبقي"]:[]),by.map(([d,t])=>{const a=sum(t,x=>x.amount),p=sum(t.filter(x=>x.paid==="paid"),x=>x.amount);return`<tr><td><b>${esc(d.name)}</b></td><td>${t.length}</td><td>${sum(t,x=>x.days||1)}</td>${ADM?`<td>${money(a)}</td><td>${money(p)}</td><td>${money(a-p)}</td>`:""}</tr>`}).join(""))}</div>
  <div class="card"><h2>التفاصيل</h2>${T(["التاريخ","السواق","العربية","الوجهة","أيام"].concat(ADM?["البدل","الحالة",""]:[]),srt(l).map(t=>`<tr><td>${esc(t.date)}</td><td>${esc(dName(t.driverId))}</td><td>${esc(vName(t.vehicleId))}</td><td>${esc(t.dest)}</td><td>${t.days||1}</td>${ADM?`<td>${money(t.amount)}</td><td>${t.paid==="paid"?'<span class="tag ok">تم الصرف</span>':'<span class="tag warn">لم يصرف</span>'}</td><td>${act("trips",t.id)}</td>`:""}</tr>`).join(""))}</div>`}
@@ -244,7 +245,7 @@ function ren(){
  return`<div class="card"><h2>التجديدات والصيانة</h2>${T(["العربية","السواق","التأمين","الضرايب","الصيانة (كم من آخر صيانة)"],rows.map(r=>`<tr><td><b>${esc(r.v.plate)}</b></td><td>${esc(dName(r.v.driverId))}</td><td>${st(r.a)} <small class="mut">${insExp(r.v)}</small></td><td>${st(r.b)} <small class="mut">${taxExp(r.v)}</small></td><td>${r.s===null?'<span class="tag na">لا عدادات</span>':r.s>=r.ev?`<span class="tag bad">مطلوبة (${r.s})</span>`:r.s>=r.ev*.9?`<span class="tag warn">قربت (${r.s})</span>`:`<span class="tag ok">${r.s}</span>`}</td></tr>`).join(""))}</div>`}
 function frep(){
  const g=G.frep,l=S.fines.filter(f=>inR(g,f)),by=S.drivers.map(d=>[d,l.filter(f=>f.driverId===d.id)]).filter(x=>x[1].length).sort((a,b)=>b[1].length-a[1].length);
- return rng("frep",g)+`<div class="card"><h2>المخالفات لكل سواق</h2>${T(["السواق","العدد"].concat(ADM?["الإجمالي"]:[]),by.map(([d,f])=>`<tr><td><b>${esc(d.name)}</b></td><td>${f.length}</td>${ADM?`<td>${money(sum(f,x=>x.amount))}</td>`:""}</tr>`).join(""))}</div><div class="card"><h2>التفاصيل (${l.length})</h2>${T(["التاريخ","السواق","العربية","النوع"],srt(l).map(f=>`<tr><td>${esc(f.date)}</td><td>${esc(dName(f.driverId))}</td><td>${esc(vName(f.vehicleId))}</td><td>${esc(f.type)}</td></tr>`).join(""))}</div>`}
+ return rng("frep",g,S.fines.length,l.length)+`<div class="card"><h2>المخالفات لكل سواق</h2>${T(["السواق","العدد"].concat(ADM?["الإجمالي"]:[]),by.map(([d,f])=>`<tr><td><b>${esc(d.name)}</b></td><td>${f.length}</td>${ADM?`<td>${money(sum(f,x=>x.amount))}</td>`:""}</tr>`).join(""))}</div><div class="card"><h2>التفاصيل (${l.length})</h2>${T(["التاريخ","السواق","العربية","النوع"],srt(l).map(f=>`<tr><td>${esc(f.date)}</td><td>${esc(dName(f.driverId))}</td><td>${esc(vName(f.vehicleId))}</td><td>${esc(f.type)}</td></tr>`).join(""))}</div>`}
 
 const SH={
  "السواقين":{f:{"الاسم":"name","المنطقة":"area","التليفون":"phone","رقم الرخصة":"licNo","انتهاء الرخصة":"licExp"}},
